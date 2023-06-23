@@ -24,7 +24,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     reward_pin = expvars.get("reward-pin", 6)
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
-    range_isi = expvars.get("inter-stimulus-interval", 10.)
+    range_isi = expvars.get("interval-range", 10.)
 
     number_of_trial = expvars.get("number-of-trial", 150)
     isis = unif_rng(mean_isi, range_isi, number_of_trial)
@@ -34,7 +34,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
             for i, isi in trial_iterator:
-                print(f"Trial {i}: Reward will be presented {isi} secs after.")
+                print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isis[i])
                 await present_stimulus(agent, ino, light_pin, light_duration)
                 await present_stimulus(agent, ino, reward_pin, reward_duration)

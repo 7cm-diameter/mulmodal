@@ -25,17 +25,18 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     noise = Tone(make_white_noise(1.), 1., 1.)
     reward_pin = expvars.get("reward-pin", 7)
 
-    isi = expvars.get("inter-stimulus-interval", 19.)
+    mean_isi = expvars.get("inter-stimulus-interval", 19.)
+    range_isi = expvars.get("interval-range", 10.)
 
     number_of_trial = expvars.get("number-of-trial", 120)
-    isis = unif_rng(isi, 5, number_of_trial)
+    isis = unif_rng(mean_isi, 5, number_of_trial)
     trial_iterator = TrialIterator(list(range(number_of_trial)), isis)
 
     try:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
-            for i, (first_light, light) in trial_iterator:
-                print(f"Trial: {i}")
+            for i, isi in trial_iterator:
+                print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isis[i])
                 speaker.play(noise, False)
                 await agent.sleep(sound_duration)
