@@ -29,7 +29,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     range_isi = expvars.get("interval-range", 10.)
 
     number_of_trial = expvars.get("number-of-trial", 120)
-    isis = unif_rng(mean_isi, 5, number_of_trial)
+    isis = unif_rng(mean_isi, range_isi, number_of_trial)
     trial_iterator = TrialIterator(list(range(number_of_trial)), isis)
 
     try:
