@@ -20,7 +20,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     light_duration = expvars.get("light-duration", 1.)
     reward_duration = expvars.get("reward-duration", 0.03)
 
-    light_pin = expvars.get("light-pin", 10)
+    light_pin = expvars.get("light-pin", [4, 5, 6, 7, 8])[2]
     reward_pin = expvars.get("reward-pin", 6)
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
