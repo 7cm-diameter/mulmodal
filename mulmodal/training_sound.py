@@ -38,8 +38,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
             for i, isi in trial_iterator:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isis[i])
+                agent.send_to(RECORDER, 14)
                 speaker.play(noise, False)
                 await agent.sleep(sound_duration)
+                agent.send_to(RECORDER, -14)
                 await present_stimulus(agent, ino, reward_pin, reward_duration)
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
