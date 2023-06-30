@@ -7,6 +7,8 @@ from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
 
 
+NOISE_IDX = 14
+
 async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
                            duration: float) -> None:
     ino.digital_write(pin, HIGH)
@@ -38,10 +40,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
             for i, isi in trial_iterator:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isis[i])
-                agent.send_to(RECORDER, 14)
+                agent.send_to(RECORDER, timestamp(NOISE_IDX))
                 speaker.play(noise, False)
                 await agent.sleep(sound_duration)
-                agent.send_to(RECORDER, -14)
+                agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                 await present_stimulus(agent, ino, reward_pin, reward_duration)
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
