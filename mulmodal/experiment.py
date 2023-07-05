@@ -49,19 +49,24 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
             for i, (first_light, light) in trial_iterator:
                 await agent.sleep(isi)
                 if first_light:
-                    await present_stimulus(agent, ino, light, light_duration)
+                    agent.send_to(RECORDER, timestamp(light))
+                    ino.digital_write(light, HIGH)
+                    await agent.sleep(light_duration)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     sd.play(noise)
                     await agent.sleep(sound_duration)
+                    ino.digital_write(light, LOW)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                    agent.send_to(RECORDER, timestamp(-light))
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    sd.play(noise)
+                    sd.play(noise, True)
                     await agent.sleep(sound_duration)
-                    agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     await present_stimulus(agent, ino, light, light_duration)
+                    sd.stop()
+                    agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
             agent.send_to(OBSERVER, NEND)
