@@ -3,7 +3,7 @@ from amas.agent import Agent, NotWorkingError
 from comprex.agent import ABEND, NEND, OBSERVER, RECORDER, START
 from comprex.audio import make_white_noise
 from comprex.config import Experimental
-from comprex.scheduler import TrialIterator, blockwise_shuffle
+from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
 
@@ -31,9 +31,11 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     reward_pin = expvars.get("reward-pin", [6, 7])
     noise = make_white_noise(sound_duration, FS)  # Click音でも良い？
 
-    isi = expvars.get("inter-stimulus-interval", 18.)
+    mean_isi = expvars.get("inter-stimulus-interval", 19.)
+    range_isi = expvars.get("interval-range", 10.)
 
     number_of_trial = expvars.get("number-of-trial", 200)
+    isis = unif_rng(mean_isi, range_isi, number_of_trial)
     number_of_blocks = int(number_of_trial / (len(light_pin) * 2))
     light_order = blockwise_shuffle(light_pin * 2 * number_of_blocks,
                                     len(light_pin))
@@ -47,6 +49,8 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
             for i, (first_light, light) in trial_iterator:
+                isi = isis[i]
+                print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isi)
                 if first_light:
                     agent.send_to(RECORDER, timestamp(light))
