@@ -62,7 +62,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                                            reward_duration)
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    sd.play(noise, True)
+                    sd.play(noise, loop=True)
                     await agent.sleep(sound_duration)
                     await present_stimulus(agent, ino, light, light_duration)
                     sd.stop()
