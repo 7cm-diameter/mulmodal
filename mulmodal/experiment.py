@@ -1,15 +1,13 @@
 import sounddevice as sd
 from amas.agent import Agent, NotWorkingError
 from comprex.agent import ABEND, NEND, OBSERVER, RECORDER, START
-from comprex.audio import make_white_noise
+from comprex.audio import make_white_noise, Speaker
 from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
 
-FS = 48000
 NOISE_IDX = 14
-sd.default.samplerate = FS
 
 
 async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
@@ -23,13 +21,15 @@ async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
-    sound_duration = expvars.get("sound-duration", 1.)
-    light_duration = expvars.get("light-duration", 1.)
+    first_duration = expvars.get("first-duration", 1.)
+    second_duration = expvars.get("second-duration", 1.)
+    diff_first_second = first_duration - second_duration
     reward_duration = expvars.get("reward-duration", 0.05)
 
     light_pin = expvars.get("light-pin", [8, 9, 10, 11, 12])
     reward_pin = expvars.get("reward-pin", [6, 7])
-    noise = make_white_noise(sound_duration, FS)  # Click音でも良い？
+    speaker = Speaker(expvars.get("speaker", 6))
+    noise = make_white_noise(sound_duration * 2.)  # Click音でも良い？
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
     range_isi = expvars.get("interval-range", 10.)
@@ -43,34 +43,40 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         sum([[0, 1] for _ in range(5)], []) * number_of_blocks,
         len(light_pin) * 2)  # 0: light -> sound / 1: sound -> light
     trial_iterator = TrialIterator(list(range(number_of_trial)),
-                                   list(zip(stimulus_order, light_order)))
+                                   list(zip(stimulus_order, light_order, isis)))
 
     try:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
-            for i, (first_light, light) in trial_iterator:
-                isi = isis[i]
+            for i, (first_light, light, isi) in trial_iterator:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isi)
                 if first_light:
+                    await agent.sleep(isi)
                     agent.send_to(RECORDER, timestamp(light))
                     ino.digital_write(light, HIGH)
-                    await agent.sleep(light_duration)
+                    await agent.sleep(diff_first_second)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    sd.play(noise)
-                    await agent.sleep(sound_duration)
-                    ino.digital_write(light, LOW)
-                    agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                    speaker.play(noise, False)
+                    await agent.sleep(second_duration)
                     agent.send_to(RECORDER, timestamp(-light))
+                    agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                    ino.digital_write(light, LOW)
+                    speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
                 else:
+                    await agent.sleep(isi)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    sd.play(noise, loop=True)
-                    await agent.sleep(sound_duration)
-                    await present_stimulus(agent, ino, light, light_duration)
-                    sd.stop()
+                    speaker.play(noise, False)
+                    await agent.sleep(diff_first_second)
+                    agent.send_to(RECORDER, timestamp(light))
+                    ino.digital_write(light, HIGH)
+                    await agent.sleep(second_duration)
+                    agent.send_to(RECORDER, timestamp(-light))
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                    ino.digital_write(light, LOW)
+                    speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
             agent.send_to(OBSERVER, NEND)
