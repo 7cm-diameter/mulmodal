@@ -1,6 +1,6 @@
 from amas.agent import Agent, NotWorkingError
 from comprex.agent import ABEND, NEND, OBSERVER, RECORDER, START
-from comprex.audio import Speaker, Tone, make_white_noise
+from comprex.audio import Speaker, make_white_noise
 from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, unif_rng
 from comprex.util import timestamp
@@ -20,11 +20,11 @@ async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
-    sound_duration = expvars.get("light-duration", 1.)
+    sound_duration = expvars.get("sound-duration", 1.)
     reward_duration = expvars.get("reward-duration", 0.03)
 
     speaker = Speaker(expvars.get("speaker", 6))
-    noise = Tone(make_white_noise(1.), 1., 1.)
+    noise = make_white_noise(sound_duration)
     reward_pin = expvars.get("reward-pin", 7)
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
