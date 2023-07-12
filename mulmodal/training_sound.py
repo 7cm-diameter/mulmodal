@@ -25,7 +25,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
     speaker = Speaker(expvars.get("speaker", 6))
     noise = make_white_noise(sound_duration)
-    reward_pin = expvars.get("reward-pin", 7)
+    reward_pin = expvars.get("reward-pin", [2, 3])[0]
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
     range_isi = expvars.get("interval-range", 10.)
