@@ -12,7 +12,8 @@ Experimental:
   inter-stimulus-interval: 3.
   interval-range:          1.
   light-pin:               [4, 5, 6, 7, 8]
-  reward-pin:              3
+  reward-pin:              [2, 3]
+  response-pin:              [9, 10]
 
 Metadata:
   subject:                 "enter-subject-name"
