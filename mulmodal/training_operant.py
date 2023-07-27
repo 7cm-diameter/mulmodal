@@ -70,7 +70,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await flush_message_for(agent, light_duration)
                     while agent.working():
                         _, response = await agent.recv()
-                        if response == response_pins[1]:
+                        if response == response_pins_str[0]:
                             break
                     agent.send_to(RECORDER, timestamp(-light))
                     ino.digital_write(light, LOW)
@@ -83,7 +83,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await flush_message_for(agent, light_duration)
                     while agent.working():
                         _, response = await agent.recv()
-                        if response == response_pins[0]:
+                        if response == response_pins_str[1]:
                             break
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
