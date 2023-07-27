@@ -51,7 +51,6 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await agent.sleep(isi)
                 if first_light:
-                    await agent.sleep(isi)
                     agent.send_to(RECORDER, timestamp(light))
                     ino.digital_write(light, HIGH)
                     await agent.sleep(light_duration)
@@ -60,7 +59,6 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
                 else:
-                    await agent.sleep(isi)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False)
                     await agent.sleep(sound_duration)
