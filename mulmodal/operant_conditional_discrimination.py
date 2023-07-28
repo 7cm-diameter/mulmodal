@@ -7,6 +7,7 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
+from mulmodal.util import flush_message_for, fixed_interval_with_postopone
 
 NOISE_IDX = 14
 CONTROLER = "Controller"
@@ -20,14 +21,6 @@ async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
     ino.digital_write(pin, LOW)
     agent.send_to(RECORDER, timestamp(-pin))
     return None
-
-
-async def flush_message_for(agent: Agent, duration: float):
-    while duration >= 0.:
-        s = perf_counter()
-        await agent.try_recv(duration)
-        e = perf_counter()
-        duration -= e - s
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
@@ -66,25 +59,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 if is_light:
                     agent.send_to(RECORDER, timestamp(light))
                     ino.digital_write(light, HIGH)
-                    # await flush_message_for(agent, light_duration)
-                    # while agent.working():
-                    #     _, response = await agent.recv()
-                    #     if response == response_pins_str[0]:
-                    #         break
-                    duration = light_duration
-                    while duration >= 0. and agent.working():
-                        s = perf_counter()
-                        mail = await agent.try_recv(duration)
-                        e = perf_counter()
-                        duration -= e - s
-                        if mail is not None:
-                            _, response = mail
-                            if response != response_pins_str[0]:
-                                duration = light_duration
-                            else:
-                                break
-                        else:
-                            continue
+                    await fixed_interval_with_postopone(agent, light_duration, response_pins_str[0], 1.)
                     agent.send_to(RECORDER, timestamp(-light))
                     ino.digital_write(light, LOW)
                     await present_stimulus(agent, ino, reward_pin[1],
@@ -92,25 +67,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False, True)
-                    # await flush_message_for(agent, light_duration)
-                    # while agent.working():
-                    #     _, response = await agent.recv()
-                    #     if response == response_pins_str[1]:
-                    #         break
-                    duration = sound_duration
-                    while duration >= 0. and agent.working():
-                        s = perf_counter()
-                        mail = await agent.try_recv(duration)
-                        e = perf_counter()
-                        duration -= e - s
-                        if mail is not None:
-                            _, response = mail
-                            if response != response_pins_str[1]:
-                                duration = light_duration
-                            else:
-                                break
-                        else:
-                            continue
+                    await fixed_interval_with_postopone(agent, sound_duration, response_pins_str[1], 1.)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[0],
