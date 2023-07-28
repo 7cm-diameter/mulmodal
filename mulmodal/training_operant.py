@@ -66,12 +66,25 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 if is_light:
                     agent.send_to(RECORDER, timestamp(light))
                     ino.digital_write(light, HIGH)
-                    # await agent.sleep(light_duration)
-                    await flush_message_for(agent, light_duration)
-                    while agent.working():
-                        _, response = await agent.recv()
-                        if response == response_pins_str[0]:
-                            break
+                    # await flush_message_for(agent, light_duration)
+                    # while agent.working():
+                    #     _, response = await agent.recv()
+                    #     if response == response_pins_str[0]:
+                    #         break
+                    duration = light_duration
+                    while duration >= 0. and agent.working():
+                        s = perf_counter()
+                        mail = await agent.try_recv(duration)
+                        e = perf_counter()
+                        duration -= e - s
+                        if mail is not None:
+                            _, response = mail
+                            if response != response_pins_str[0]:
+                                duration = light_duration
+                            else:
+                                break
+                        else:
+                            continue
                     agent.send_to(RECORDER, timestamp(-light))
                     ino.digital_write(light, LOW)
                     await present_stimulus(agent, ino, reward_pin[1],
@@ -79,12 +92,25 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False, True)
-                    # await agent.sleep(sound_duration)
-                    await flush_message_for(agent, light_duration)
-                    while agent.working():
-                        _, response = await agent.recv()
-                        if response == response_pins_str[1]:
-                            break
+                    # await flush_message_for(agent, light_duration)
+                    # while agent.working():
+                    #     _, response = await agent.recv()
+                    #     if response == response_pins_str[1]:
+                    #         break
+                    duration = sound_duration
+                    while duration >= 0. and agent.working():
+                        s = perf_counter()
+                        mail = await agent.try_recv(duration)
+                        e = perf_counter()
+                        duration -= e - s
+                        if mail is not None:
+                            _, response = mail
+                            if response != response_pins_str[1]:
+                                duration = light_duration
+                            else:
+                                break
+                        else:
+                            continue
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[0],
