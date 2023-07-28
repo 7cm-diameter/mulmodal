@@ -33,7 +33,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     response_pins = expvars.get("response-pin", [2, 3])
     response_pins_str = list(map(str, response_pins))
     speaker = Speaker(expvars.get("speaker", 6))
-    noise = make_white_noise(light_duration * 2.)  # Click音でも良い？
+    noise = make_white_noise(light_duration * 2.)
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
     range_isi = expvars.get("interval-range", 10.)
@@ -45,7 +45,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                                     len(light_pin))
     stimulus_order = blockwise_shuffle(
         sum([[0, 1] for _ in range(5)], []) * number_of_blocks,
-        len(light_pin) * 2)  # 0: light -> sound / 1: sound -> light
+        len(light_pin) * 2)
     trial_iterator = TrialIterator(list(range(number_of_trial)),
                                    list(zip(stimulus_order, light_order, isis)))
 
@@ -54,7 +54,6 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
             agent.send_to(RECORDER, timestamp(START))
             for i, (is_light, light, isi) in trial_iterator:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
-                # await agent.sleep(isi)
                 await flush_message_for(agent, isi)
                 if is_light:
                     agent.send_to(RECORDER, timestamp(light))
@@ -83,13 +82,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
 
 async def read(agent: Agent, ino: Arduino, expvars: Experimental):
-    # read experimental variables from the given config file
     response_pin = expvars.get("response-pin", [9, 10])
 
-    # cast to `str` to compare with inputs from Arduino
     response_pins_str = list(map(str, response_pin))
 
-    # Reading inputs from Arduino
     try:
         while agent.working():
             input_: bytes = await agent.call_async(ino.read_until_eol)
@@ -135,7 +131,6 @@ if __name__ == '__main__':
         .assign_task(control, ino=ino, expvars=config.experimental) \
         .assign_task(_self_terminate)
 
-    # Use built-in agents
     reader = Agent(READER) \
         .assign_task(read, ino=ino, expvars=config.experimental) \
         .assign_task(_self_terminate)
