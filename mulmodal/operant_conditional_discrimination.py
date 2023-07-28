@@ -30,7 +30,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
     light_pin = expvars.get("light-pin", [8, 9, 10, 11, 12])
     reward_pin = expvars.get("reward-pin", [6, 7])
-    response_pins = expvars.get("response-pin", [2, 3])
+    response_pins = expvars.get("response-pin", [-9, -10])
     response_pins_str = list(map(str, response_pins))
     speaker = Speaker(expvars.get("speaker", 6))
     noise = make_white_noise(light_duration * 2.)
@@ -82,7 +82,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
 
 async def read(agent: Agent, ino: Arduino, expvars: Experimental):
-    response_pin = expvars.get("response-pin", [9, 10])
+    response_pin = expvars.get("response-pin", [-9, -10])
 
     response_pins_str = list(map(str, response_pin))
 
