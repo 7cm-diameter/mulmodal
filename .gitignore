@@ -5,7 +5,7 @@
 __pycache__/
 *.yaml
 *.csv
-!sample.yaml
+!*sample.yaml
 !test*.yaml
 /.vim
 data/
