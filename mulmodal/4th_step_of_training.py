@@ -61,7 +61,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await fixed_interval_with_postopone(agent, light_duration, response_pins_str[0], 1.)
                     agent.send_to(RECORDER, timestamp(-light))
                     ino.digital_write(light, LOW)
-                    await present_stimulus(agent, ino, reward_pin[1],
+                    await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
@@ -69,7 +69,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await fixed_interval_with_postopone(agent, sound_duration, response_pins_str[1], 1.)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
-                    await present_stimulus(agent, ino, reward_pin[0],
+                    await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
