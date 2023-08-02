@@ -9,6 +9,7 @@ from numpy import int64, cumsum
 from mulmodal.util import fixed_time_with_postopone
 
 
+NOISE_IDX = 14
 CONTROLLER = "Controller"
 
 
@@ -46,11 +47,16 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
                 print(f"Trial {trial}: Reward will occur {iri} secs after.")
                 if previous_component != component:
                     if component == 0:
+                        agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                         speaker.stop()
+                        agent.send_to(RECORDER, timestamp(light_pins[2]))
                         ino.digital_write(light_pins[2], HIGH)
                     else:
+                        agent.send_to(RECORDER, timestamp(-light_pins[2]))
                         ino.digital_write(light_pins[2], LOW)
+                        agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
+                        light_pin = light_pins.pop()
                 if component == 0:
                     target_response = response_pins[0]
                     reward_pin = reward_pins[0]
@@ -58,9 +64,12 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
                     target_response = response_pins[1]
                     reward_pin = reward_pins[1]
                 await fixed_time_with_postopone(agent, iri, target_response, 2.)
+                agent.send_to(RECORDER, timestamp(reward_pin))
                 ino.digital_write(reward_pin, HIGH)
                 await agent.sleep(reward_duration)
+                agent.send_to(RECORDER, timestamp(-reward_pin))
                 ino.digital_write(reward_pin, LOW)
+
                 previous_component = component
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
