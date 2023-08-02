@@ -24,3 +24,16 @@ async def fixed_interval_with_postopone(agent: Agent, duration: float,
         _, response = mail
         if response != target_response and duration < postopone:
             duration = postopone
+
+
+async def fixed_time_with_postopone(agent: Agent, duration: float,
+                                    target_response: Any, postopone: float = 0.):
+    while duration >= 0. and agent.working():
+        s = perf_counter()
+        mail = await agent.try_recv(duration)
+        duration -= perf_counter() - s
+        if mail is None:
+            break
+        _, response = mail
+        if response != target_response and duration < postopone:
+            duration = postopone
