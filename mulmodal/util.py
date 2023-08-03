@@ -45,13 +45,13 @@ async def fixed_time_with_postpone(agent: Agent, duration: float,
 async def fixed_interval_with_limit(agent: Agent, duration: float, target_response: Any,
                                     postpone: float = 0., limit: float = 10.):
     while duration >= 0. and agent.working():
-        if limit < 0:
-            break
         s = perf_counter()
         mail = await agent.try_recv(duration)
         required_time = perf_counter() - s
         duration -= required_time
         limit -= required_time
+        if limit < 0 and duration < 0:
+            break
         if mail is None:
             duration = 1e-3
             continue
