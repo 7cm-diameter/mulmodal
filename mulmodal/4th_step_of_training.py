@@ -7,20 +7,10 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
-from mulmodal.util import flush_message_for, fixed_interval_with_postopone
+from mulmodal.util import flush_message_for, fixed_interval_with_postopone, present_stimulus
 
 NOISE_IDX = 14
 CONTROLER = "Controller"
-
-
-async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
-                           duration: float) -> None:
-    ino.digital_write(pin, HIGH)
-    agent.send_to(RECORDER, timestamp(pin))
-    await agent.sleep(duration)
-    ino.digital_write(pin, LOW)
-    agent.send_to(RECORDER, timestamp(-pin))
-    return None
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:

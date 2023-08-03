@@ -6,7 +6,7 @@ from comprex.scheduler import TrialIterator, geom_rng, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
 from numpy import int64, cumsum
-from mulmodal.util import fixed_time_with_postopone
+from mulmodal.util import fixed_time_with_postopone, present_stimulus
 
 
 NOISE_IDX = 14
@@ -64,11 +64,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
                     target_response = response_pins[1]
                     reward_pin = reward_pins[1]
                 await fixed_time_with_postopone(agent, iri, target_response, 2.)
-                agent.send_to(RECORDER, timestamp(reward_pin))
-                ino.digital_write(reward_pin, HIGH)
-                await agent.sleep(reward_duration)
-                agent.send_to(RECORDER, timestamp(-reward_pin))
-                ino.digital_write(reward_pin, LOW)
+                await present_stimulus(agent, ino, reward_pin, reward_duration)
 
                 previous_component = component
             agent.send_to(OBSERVER, NEND)

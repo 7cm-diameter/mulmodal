@@ -2,6 +2,9 @@ from time import perf_counter
 from typing import Any, Optional
 from amas.agent import Agent
 from numpy.random import uniform
+from comprex.util import timestamp
+from comprex.agent import RECORDER
+from pino.ino import Arduino, HIGH, LOW
 
 
 async def flush_message_for(agent: Agent, duration: float):
@@ -37,3 +40,13 @@ async def fixed_time_with_postopone(agent: Agent, duration: float,
         _, response = mail
         if response != target_response and duration < postopone:
             duration = postopone
+
+
+async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
+                           duration: float) -> None:
+    ino.digital_write(pin, HIGH)
+    agent.send_to(RECORDER, timestamp(pin))
+    await agent.sleep(duration)
+    ino.digital_write(pin, LOW)
+    agent.send_to(RECORDER, timestamp(-pin))
+    return None
