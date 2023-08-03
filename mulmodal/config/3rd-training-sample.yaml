@@ -13,10 +13,12 @@ Experimental:
   interval-range:          1.
   light-pin:               [4, 5, 6, 7, 8]
   reward-pin:              [2, 3]
+  response-pin:            [-9, -10]
+  postpone:                .5
 
 Metadata:
   subject:                 "enter-subject-name"
-  condition:               "test-pavlovian"
+  condition:               "3rd-step-of-training"
 
 PinMode:
   10:                      "SSINPUT"

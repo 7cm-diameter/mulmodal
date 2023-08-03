@@ -19,7 +19,7 @@ Experimental:
 
 Metadata:
   subject:                    "enter-subject-name"
-  condition:                  "test-operant"
+  condition:                  "2nd-step-of-training"
 
 PinMode:
   10:                         "SSINPUT"
