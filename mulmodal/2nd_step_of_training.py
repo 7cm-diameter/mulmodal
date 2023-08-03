@@ -46,7 +46,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
             agent.send_to(RECORDER, timestamp(START))
             previous_component = -1
             light_pin = light_pins.pop()
-            for trial, iri, component in trial_iterator:
+            for trial, (iri, component) in trial_iterator:
                 print(f"Trial {trial}: Reward will occur {iri} secs after.")
                 if previous_component != component:
                     if component == 0:
