@@ -72,13 +72,33 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     return None
 
 
+async def read(agent: Agent, ino: Arduino, expvars: Experimental):
+    response_pin = expvars.get("response-pin", [-9, -10])
+
+    response_pins_str = list(map(str, response_pin))
+
+    try:
+        while agent.working():
+            input_: bytes = await agent.call_async(ino.read_until_eol)
+            if input_ is None:
+                continue
+            parsed_input = input_.rstrip().decode("utf-8")
+            agent.send_to(RECORDER, timestamp(parsed_input))
+            if parsed_input in response_pins_str:
+                agent.send_to(CONTROLLER, parsed_input)
+
+    except NotWorkingError:
+        ino.cancel_read()
+
+
+
 if __name__ == '__main__':
     from os import mkdir
     from os.path import exists, join
 
     from amas.connection import Register
     from amas.env import Environment
-    from comprex.agent import Observer, Reader, Recorder, _self_terminate
+    from comprex.agent import Observer, Recorder, _self_terminate, READER
     from comprex.config import PinoClap
     from comprex.util import get_current_file_abspath, namefile
     from pino.ino import Arduino, Comport
@@ -99,12 +119,14 @@ if __name__ == '__main__':
         mkdir(data_dir)
     filename = join(data_dir, namefile(config.metadata))
 
-    controller = Agent("Controller") \
+    controller = Agent(CONTROLLER) \
         .assign_task(control, ino=ino, expvars=config.experimental) \
         .assign_task(_self_terminate)
 
     # Use built-in agents
-    reader = Reader(ino=ino)
+    reader = Agent(READER) \
+        .assign_task(read, ino=ino, expvars=config.experimental) \
+        .assign_task(_self_terminate)
     recorder = Recorder(filename=filename)
     observer = Observer()
 

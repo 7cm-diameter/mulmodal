@@ -43,7 +43,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
     try:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
-            previous_component = components[0]
+            previous_component = -1
             for trial, (iri, component) in trial_iterator:
                 print(f"Trial {trial}: Reward will occur {iri} secs after.")
                 if previous_component != component:

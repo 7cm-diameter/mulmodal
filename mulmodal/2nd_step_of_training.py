@@ -24,7 +24,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
     number_of_component = number_of_rewards // mean_component_length
 
     light_pins = expvars.get("light-pin", [4, 5, 7, 8])
-    light_pins = list(choice(light_pins, len(light_pins), replace=False))
+    light_pins = list(map(int, choice(light_pins, len(light_pins), replace=False)))
     reward_pins = expvars.get("reward-pin", [2, 3])
     speaker = Speaker(expvars.get("speaker", 6))
     noise = make_white_noise(30.)

@@ -10,7 +10,7 @@ from pino.ino import HIGH, LOW, Arduino
 from mulmodal.util import flush_message_for, fixed_interval_with_limit, present_stimulus
 
 NOISE_IDX = 14
-CONTROLER = "Controller"
+CONTROLLER = "Controller"
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
@@ -84,7 +84,7 @@ async def read(agent: Agent, ino: Arduino, expvars: Experimental):
             parsed_input = input_.rstrip().decode("utf-8")
             agent.send_to(RECORDER, timestamp(parsed_input))
             if parsed_input in response_pins_str:
-                agent.send_to(CONTROLER, parsed_input)
+                agent.send_to(CONTROLLER, parsed_input)
 
     except NotWorkingError:
         ino.cancel_read()
@@ -117,7 +117,7 @@ if __name__ == '__main__':
         mkdir(data_dir)
     filename = join(data_dir, namefile(config.metadata))
 
-    controller = Agent("Controller") \
+    controller = Agent(CONTROLLER) \
         .assign_task(control, ino=ino, expvars=config.experimental) \
         .assign_task(_self_terminate)
 
