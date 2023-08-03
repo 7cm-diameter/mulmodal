@@ -52,7 +52,7 @@ async def fixed_interval_with_limit(agent: Agent, duration: float, target_respon
         if limit < 0 and duration < 0:
             break
         if mail is None:
-            duration = 1e-1
+            duration = 1e-3
             limit -= required_time
             continue
         _, response = mail
