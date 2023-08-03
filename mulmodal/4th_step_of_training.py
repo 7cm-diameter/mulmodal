@@ -41,26 +41,26 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     number_of_trial = expvars.get("number-of-trial", 200)
     isis = unif_rng(mean_isi, range_isi, number_of_trial)
     number_of_blocks = int(number_of_trial / (len(light_pin) * 2))
-    light_order = blockwise_shuffle(light_pin * 2 * number_of_blocks,
+    light_positions = blockwise_shuffle(light_pin * 2 * number_of_blocks,
                                     len(light_pin))
-    stimulus_order = blockwise_shuffle(
+    which_stimulus = blockwise_shuffle(
         sum([[0, 1] for _ in range(5)], []) * number_of_blocks,
         len(light_pin) * 2)
     trial_iterator = TrialIterator(list(range(number_of_trial)),
-                                   list(zip(stimulus_order, light_order, isis)))
+                                   list(zip(which_stimulus, light_positions, isis)))
 
     try:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
-            for i, (is_light, light, isi) in trial_iterator:
+            for i, (is_light, light_position, isi) in trial_iterator:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
                 await flush_message_for(agent, isi)
                 if is_light:
-                    agent.send_to(RECORDER, timestamp(light))
-                    ino.digital_write(light, HIGH)
+                    agent.send_to(RECORDER, timestamp(light_position))
+                    ino.digital_write(light_position, HIGH)
                     await fixed_interval_with_postopone(agent, light_duration, response_pins_str[0], 1.)
-                    agent.send_to(RECORDER, timestamp(-light))
-                    ino.digital_write(light, LOW)
+                    agent.send_to(RECORDER, timestamp(-light_position))
+                    ino.digital_write(light_position, LOW)
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
                 else:
