@@ -8,17 +8,18 @@ Experimental:
   range-component-length:     5
   interval-between-component: 10.
   speaker:                    6
-  reward-duration:            0.015
-  number-of-rewards:          150
+  reward-duration:            0.01
+  number-of-rewards:          200
   inter-reward-interval:      3.
   range-IRI:                  1.
   light-pin:                  [4, 5, 6, 7, 8]
   reward-pin:                 [2, 3]
   response-pin:               [-9, -10]
+  postpone:                   2.
 
 Metadata:
   subject:                    "enter-subject-name"
-  condition:                  "test-operant"
+  condition:                  "1st-step-of-training"
 
 PinMode:
   10:                         "SSINPUT"

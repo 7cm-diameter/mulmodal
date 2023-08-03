@@ -15,6 +15,7 @@ Experimental:
   light-pin:                  [4, 5, 7, 8]
   reward-pin:                 [2, 3]
   response-pin:               [-9, -10]
+  postpone:                   2.
 
 Metadata:
   subject:                    "enter-subject-name"

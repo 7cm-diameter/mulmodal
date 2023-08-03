@@ -30,6 +30,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
     noise = make_white_noise(30.)
     response_pins = list(map(str, expvars.get("response-pin", [-9, -10])))
     reward_duration = expvars.get("reward-duration", 0.01)
+    postpone = expvars.get("postpone", 2.)
 
     component_lengths = unif_rng(mean_component_length,
                                  range_component,
@@ -66,7 +67,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
                 else:
                     target_response = response_pins[1]
                     reward_pin = reward_pins[1]
-                await fixed_time_with_postpone(agent, iri, target_response, 2.)
+                await fixed_time_with_postpone(agent, iri, target_response, postpone)
                 await present_stimulus(agent, ino, reward_pin, reward_duration)
                 previous_component = component
             agent.send_to(OBSERVER, NEND)

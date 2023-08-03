@@ -16,6 +16,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     light_duration = expvars.get("light-duration", 1.)
     sound_duration = expvars.get("sound-duration", 1.)
     reward_duration = expvars.get("reward-duration", 0.05)
+    postpone = expvars.get("postpone", .5)
 
     light_pin = expvars.get("light-pin", [8, 9, 10, 11, 12])
     reward_pin = expvars.get("reward-pin", [6, 7])
@@ -48,7 +49,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     ino.digital_write(light_position, HIGH)
                     agent.send_to(RECORDER, timestamp(-light_position))
                     await fixed_time_with_postpone(agent, light_duration,
-                                                   response_pins[0], 0.5)
+                                                   response_pins[0], postpone)
                     ino.digital_write(light_position, LOW)
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
@@ -56,7 +57,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False)
                     await fixed_time_with_postpone(agent, sound_duration,
-                                                   response_pins[1], 0.5)
+                                                   response_pins[1], postpone)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[1],
