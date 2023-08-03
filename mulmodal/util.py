@@ -44,6 +44,7 @@ async def fixed_time_with_postpone(agent: Agent, duration: float,
 
 async def fixed_interval_with_limit(agent: Agent, duration: float, target_response: Any,
                                     postpone: float = 0., limit: float = 10.):
+    _limit = limit
     while duration >= 0. and agent.working():
         s = perf_counter()
         mail = await agent.try_recv(duration)
@@ -58,6 +59,7 @@ async def fixed_interval_with_limit(agent: Agent, duration: float, target_respon
         _, response = mail
         if response != target_response and duration < postpone:
             duration = postpone
+            limit = _limit
 
 
 async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
