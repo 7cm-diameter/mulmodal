@@ -65,7 +65,6 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
                     reward_pin = reward_pins[1]
                 await fixed_time_with_postopone(agent, iri, target_response, 2.)
                 await present_stimulus(agent, ino, reward_pin, reward_duration)
-
                 previous_component = component
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
