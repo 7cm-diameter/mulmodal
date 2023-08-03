@@ -55,7 +55,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                                            reward_duration)
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    speaker.play(noise, False)
+                    speaker.play(noise, False, True)
                     await fixed_time_with_postpone(agent, sound_duration,
                                                    response_pins[1], postpone)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
