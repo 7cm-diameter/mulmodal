@@ -7,7 +7,7 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
-from mulmodal.util import flush_message_for, fixed_interval_with_postopone, present_stimulus
+from mulmodal.util import flush_message_for, fixed_interval_with_limit, present_stimulus
 
 NOISE_IDX = 14
 CONTROLER = "Controller"
@@ -18,10 +18,9 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     sound_duration = expvars.get("sound-duration", 1.)
     reward_duration = expvars.get("reward-duration", 0.05)
 
-    light_pin = expvars.get("light-pin", [8, 9, 10, 11, 12])
-    reward_pin = expvars.get("reward-pin", [6, 7])
-    response_pins = expvars.get("response-pin", [-9, -10])
-    response_pins_str = list(map(str, response_pins))
+    light_pin = expvars.get("light-pin", [4, 5, 6, 7, 8])
+    reward_pin = expvars.get("reward-pin", [2, 3])
+    response_pins = list(map(str, expvars.get("response-pin", [-9, -10])))
     speaker = Speaker(expvars.get("speaker", 6))
     noise = make_white_noise(light_duration * 2.)
 
@@ -48,7 +47,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 if is_light:
                     agent.send_to(RECORDER, timestamp(light_position))
                     ino.digital_write(light_position, HIGH)
-                    await fixed_interval_with_postopone(agent, light_duration, response_pins_str[0], 1.)
+                    await fixed_interval_with_limit(agent, light_duration, response_pins[0], 1., light_duration * 2)
                     agent.send_to(RECORDER, timestamp(-light_position))
                     ino.digital_write(light_position, LOW)
                     await present_stimulus(agent, ino, reward_pin[0],
@@ -56,7 +55,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False, True)
-                    await fixed_interval_with_postopone(agent, sound_duration, response_pins_str[1], 1.)
+                    await fixed_interval_with_limit(agent, sound_duration, response_pins[1], 1., sound_duration * 2)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[1],

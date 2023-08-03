@@ -15,7 +15,7 @@ async def flush_message_for(agent: Agent, duration: float):
         duration -= e - s
 
 
-async def fixed_interval_with_postopone(agent: Agent, duration: float,
+async def fixed_interval_with_postpone(agent: Agent, duration: float,
                                         target_response: Any, postopone: float = 0.):
     while duration >= 0. and agent.working():
         s = perf_counter()
@@ -29,7 +29,7 @@ async def fixed_interval_with_postopone(agent: Agent, duration: float,
             duration = postopone
 
 
-async def fixed_time_with_postopone(agent: Agent, duration: float,
+async def fixed_time_with_postpone(agent: Agent, duration: float,
                                     target_response: Any, postopone: float = 0.):
     while duration >= 0. and agent.working():
         s = perf_counter()
@@ -37,6 +37,24 @@ async def fixed_time_with_postopone(agent: Agent, duration: float,
         duration -= perf_counter() - s
         if mail is None:
             break
+        _, response = mail
+        if response != target_response and duration < postopone:
+            duration = postopone
+
+
+async def fixed_interval_with_limit(agent: Agent, duration: float, target_response: Any,
+                                    postopone: float = 0., limit: float = 10.):
+    while duration >= 0. and agent.working():
+        if limit < 0:
+            break
+        s = perf_counter()
+        mail = await agent.try_recv(duration)
+        required_time = perf_counter() - s
+        duration -= required_time
+        limit -= required_time
+        if mail is None:
+            duration = 1e-3
+            continue
         _, response = mail
         if response != target_response and duration < postopone:
             duration = postopone
