@@ -6,7 +6,7 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
-from mulmodal.util import fixed_time_with_postopone, present_stimulus
+from mulmodal.util import fixed_time_with_postpone, present_stimulus
 
 NOISE_IDX = 14
 CONTROLLER = "Controller"
@@ -47,16 +47,16 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     agent.send_to(RECORDER, timestamp(light_position))
                     ino.digital_write(light_position, HIGH)
                     agent.send_to(RECORDER, timestamp(-light_position))
-                    await fixed_time_with_postopone(agent, light_duration,
-                                                    response_pins[0], 0.5)
+                    await fixed_time_with_postpone(agent, light_duration,
+                                                   response_pins[0], 0.5)
                     ino.digital_write(light_position, LOW)
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False)
-                    await fixed_time_with_postopone(agent, sound_duration,
-                                                    response_pins[1], 0.5)
+                    await fixed_time_with_postpone(agent, sound_duration,
+                                                   response_pins[1], 0.5)
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[1],
