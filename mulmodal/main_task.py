@@ -6,18 +6,10 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
+from mulmodal.util import flush_message_for, fixed_interval_with_limit, present_stimulus
 
 NOISE_IDX = 14
-
-
-async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
-                           duration: float) -> None:
-    ino.digital_write(pin, HIGH)
-    agent.send_to(RECORDER, timestamp(pin))
-    await agent.sleep(duration)
-    ino.digital_write(pin, LOW)
-    agent.send_to(RECORDER, timestamp(-pin))
-    return None
+CONTROLLER = "Controller"
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
@@ -25,9 +17,11 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     second_duration = expvars.get("second-duration", 1.)
     diff_first_second = first_duration - second_duration
     reward_duration = expvars.get("reward-duration", 0.05)
+    postpone = expvars.get("postpone", .5)
 
     light_pin = expvars.get("light-pin", [8, 9, 10, 11, 12])
     reward_pin = expvars.get("reward-pin", [6, 7])
+    response_pins = list(map(str, expvars.get("response-pin", [-9, -10])))
     speaker = Speaker(expvars.get("speaker", 6))
     noise = make_white_noise(first_duration * 2.)  # Click音でも良い？
 
@@ -37,47 +31,49 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     number_of_trial = expvars.get("number-of-trial", 200)
     isis = unif_rng(mean_isi, range_isi, number_of_trial)
     number_of_blocks = int(number_of_trial / (len(light_pin) * 2))
-    light_order = blockwise_shuffle(light_pin * 2 * number_of_blocks,
+    light_positions = blockwise_shuffle(light_pin * 2 * number_of_blocks,
                                     len(light_pin))
     stimulus_order = blockwise_shuffle(
         sum([[0, 1] for _ in range(5)], []) * number_of_blocks,
         len(light_pin) * 2)  # 0: light -> sound / 1: sound -> light
     trial_iterator = TrialIterator(list(range(number_of_trial)),
-                                   list(zip(stimulus_order, light_order, isis)))
+                                   list(zip(stimulus_order, light_positions, isis)))
 
     try:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
-            for i, (first_light, light, isi) in trial_iterator:
+            for i, (is_light_first, light_position, isi) in trial_iterator:
                 print(f"Trial {i}: Cue will be presented {isi} secs after.")
-                await agent.sleep(isi)
-                if first_light:
-                    await agent.sleep(isi)
-                    agent.send_to(RECORDER, timestamp(light))
-                    ino.digital_write(light, HIGH)
-                    await agent.sleep(diff_first_second)
+                await flush_message_for(agent, isi)
+                if is_light_first:
+                    agent.send_to(RECORDER, timestamp(light_position))
+                    ino.digital_write(light_position, HIGH)
+                    await flush_message_for(agent, diff_first_second)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    speaker.play(noise, False)
-                    await agent.sleep(second_duration)
-                    agent.send_to(RECORDER, timestamp(-light))
+                    speaker.play(noise, False, True)
+                    await fixed_interval_with_limit(agent, second_duration,
+                                                    response_pins[0], postpone,
+                                                    first_duration * 2)
+                    agent.send_to(RECORDER, timestamp(-light_position))
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
-                    ino.digital_write(light, LOW)
+                    ino.digital_write(light_position, LOW)
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
                 else:
-                    await agent.sleep(isi)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    speaker.play(noise, False)
-                    await agent.sleep(diff_first_second)
-                    agent.send_to(RECORDER, timestamp(light))
-                    ino.digital_write(light, HIGH)
-                    await agent.sleep(second_duration)
-                    agent.send_to(RECORDER, timestamp(-light))
+                    speaker.play(noise, False, True)
+                    await flush_message_for(agent, diff_first_second)
+                    agent.send_to(RECORDER, timestamp(light_position))
+                    ino.digital_write(light_position, HIGH)
+                    await fixed_interval_with_limit(agent, second_duration,
+                                                    response_pins[1], postpone,
+                                                    first_duration * 2)
+                    agent.send_to(RECORDER, timestamp(-light_position))
                     agent.send_to(RECORDER, timestamp(-NOISE_IDX))
-                    ino.digital_write(light, LOW)
+                    ino.digital_write(light_position, LOW)
                     speaker.stop()
-                    await present_stimulus(agent, ino, reward_pin[0],
+                    await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
@@ -87,6 +83,25 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         agent.send_to(RECORDER, timestamp(ABEND))
         agent.finish()
     return None
+
+
+async def read(agent: Agent, ino: Arduino, expvars: Experimental):
+    response_pin = expvars.get("response-pin", [-9, -10])
+
+    response_pins_str = list(map(str, response_pin))
+
+    try:
+        while agent.working():
+            input_: bytes = await agent.call_async(ino.read_until_eol)
+            if input_ is None:
+                continue
+            parsed_input = input_.rstrip().decode("utf-8")
+            agent.send_to(RECORDER, timestamp(parsed_input))
+            if parsed_input in response_pins_str:
+                agent.send_to(CONTROLLER, parsed_input)
+
+    except NotWorkingError:
+        ino.cancel_read()
 
 
 if __name__ == '__main__':
