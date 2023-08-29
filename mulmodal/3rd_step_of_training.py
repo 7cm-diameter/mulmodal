@@ -1,4 +1,3 @@
-import sounddevice as sd
 from amas.agent import Agent, NotWorkingError
 from comprex.agent import ABEND, NEND, OBSERVER, RECORDER, START
 from comprex.audio import make_white_noise, Speaker
