@@ -66,7 +66,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
                     diff_first_second_sound -= step
-                    second_duration += step
+                    second_duration_sound += step
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False, True)
@@ -83,6 +83,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
                     diff_first_second_light -= step
+                    second_duration_light += step
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
             agent.finish()
