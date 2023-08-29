@@ -34,7 +34,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
     number_of_trial = expvars.get("number-of-trial", 200)
     isis = unif_rng(mean_isi, range_isi, number_of_trial)
-    step = (last_second_duration - initial_second_duration) / number_of_trial
+    step = (last_second_duration - initial_second_duration) / (number_of_trial / 2)
     number_of_blocks = int(number_of_trial / (len(light_pin) * 2))
     light_positions = blockwise_shuffle(light_pin * 2 * number_of_blocks,
                                     len(light_pin))
