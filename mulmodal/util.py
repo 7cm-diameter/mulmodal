@@ -1,5 +1,5 @@
 from time import perf_counter
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 from amas.agent import Agent
 from numpy.random import uniform
 from comprex.util import timestamp
@@ -60,6 +60,33 @@ async def fixed_interval_with_limit(agent: Agent, duration: float, target_respon
         if response != target_response and duration < postpone:
             duration = postpone
             limit = _limit
+
+
+async def fixed_time_with_error(agent: Agent, duration: float, target_response: Any) -> bool:
+    while duration > 0. and agent.working():
+        s = perf_counter()
+        mail = await agent.try_recv(duration)
+        duration -= perf_counter() - s
+        if mail is None:
+            break
+        _, response = mail
+        if response != target_response:
+            return False
+    return True
+
+
+async def fixed_interval_with_error(agent: Agent, duration: float, target_response: Any) -> bool:
+    while duration >= 0. and agent.working():
+        s = perf_counter()
+        mail = await agent.try_recv(duration)
+        duration -= perf_counter() - s
+        if mail is None:
+            duration = 1e-3
+            continue
+        _, response = mail
+        if response != target_response:
+            return False
+    return True
 
 
 async def present_stimulus(agent: Agent, ino: Arduino, pin: int,
