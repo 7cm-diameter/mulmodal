@@ -14,8 +14,12 @@ CONTROLLER = "Controller"
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     first_duration = expvars.get("first-duration", 1.)
-    second_duration = expvars.get("second-duration", 1.)
-    diff_first_second = first_duration - second_duration
+    initial_second_duration = expvars.get("initial-second-duration", 1.)
+    last_second_duration = expvars.get("last-second-duration", 1.)
+    second_duration_sound = initial_second_duration
+    second_duration_light = initial_second_duration
+    diff_first_second_light = first_duration - initial_second_duration
+    diff_first_second_sound = first_duration - initial_second_duration
     reward_duration = expvars.get("reward-duration", 0.05)
     postpone = expvars.get("postpone", .5)
 
@@ -30,6 +34,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
     number_of_trial = expvars.get("number-of-trial", 200)
     isis = unif_rng(mean_isi, range_isi, number_of_trial)
+    step = (last_second_duration - initial_second_duration) / (number_of_trial / 2)
     number_of_blocks = int(number_of_trial / (len(light_pin) * 2))
     light_positions = blockwise_shuffle(light_pin * 2 * number_of_blocks,
                                     len(light_pin))
@@ -48,10 +53,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                 if is_light_first:
                     agent.send_to(RECORDER, timestamp(light_position))
                     ino.digital_write(light_position, HIGH)
-                    await flush_message_for(agent, diff_first_second)
+                    await flush_message_for(agent, diff_first_second_sound)
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False, True)
-                    await fixed_interval_with_limit(agent, second_duration,
+                    await fixed_interval_with_limit(agent, second_duration_sound,
                                                     response_pins[0], postpone,
                                                     first_duration * 2)
                     agent.send_to(RECORDER, timestamp(-light_position))
@@ -60,13 +65,15 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[0],
                                            reward_duration)
+                    diff_first_second_sound -= step
+                    second_duration_sound += step
                 else:
                     agent.send_to(RECORDER, timestamp(NOISE_IDX))
                     speaker.play(noise, False, True)
-                    await flush_message_for(agent, diff_first_second)
+                    await flush_message_for(agent, diff_first_second_light)
                     agent.send_to(RECORDER, timestamp(light_position))
                     ino.digital_write(light_position, HIGH)
-                    await fixed_interval_with_limit(agent, second_duration,
+                    await fixed_interval_with_limit(agent, second_duration_light,
                                                     response_pins[1], postpone,
                                                     first_duration * 2)
                     agent.send_to(RECORDER, timestamp(-light_position))
@@ -75,6 +82,8 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     speaker.stop()
                     await present_stimulus(agent, ino, reward_pin[1],
                                            reward_duration)
+                    diff_first_second_light -= step
+                    second_duration_light += step
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
             agent.finish()

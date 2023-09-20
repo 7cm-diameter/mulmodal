@@ -1,4 +1,5 @@
-import sounddevice as sd
+from time import perf_counter
+from typing import Any
 from amas.agent import Agent, NotWorkingError
 from comprex.agent import ABEND, NEND, OBSERVER, RECORDER, START
 from comprex.audio import make_white_noise, Speaker
@@ -6,19 +7,40 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
-from mulmodal.util import flush_message_for, fixed_interval_with_limit, present_stimulus
+from mulmodal.util import flush_message_for, present_stimulus, fixed_interval_with_limit
+from numpy.random import uniform
 
 NOISE_IDX = 14
 CONTROLLER = "Controller"
 
 
+async def decision_period(agent: Agent, duration: float, correct: Any) -> bool:
+    correct = 0
+    while duration >= 0. and agent.working():
+        s = perf_counter()
+        mail = await agent.try_recv(duration)
+        required_time = perf_counter() - s
+        duration -= required_time
+        if mail is None:
+            break
+        _, response = mail
+        if response == correct:
+            correct += 1
+            continue
+        else:
+            return False
+    return correct > 0
+
+
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     first_duration = expvars.get("first-duration", 1.)
     second_duration = expvars.get("second-duration", 1.)
+    decision_duration = expvars.get("decision-duration", 0.5)
     diff_first_second = first_duration - second_duration
+    diff_second_decision = second_duration - decision_duration
     reward_duration = expvars.get("reward-duration", 0.05)
-    postpone = expvars.get("postpone", .5)
 
+    p_free_trial = expvars.get("propotion-of-free-trial", 0.2)
     light_pin = expvars.get("light-pin", [8, 9, 10, 11, 12])
     reward_pin = expvars.get("reward-pin", [6, 7])
     response_pins = list(map(str, expvars.get("response-pin", [-9, -10])))
@@ -43,38 +65,74 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
             for i, (is_light_first, light_position, isi) in trial_iterator:
-                print(f"Trial {i}: Cue will be presented {isi} secs after.")
-                await flush_message_for(agent, isi)
-                if is_light_first:
-                    agent.send_to(RECORDER, timestamp(light_position))
-                    ino.digital_write(light_position, HIGH)
-                    await flush_message_for(agent, diff_first_second)
-                    agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    speaker.play(noise, False, True)
-                    await fixed_interval_with_limit(agent, second_duration,
-                                                    response_pins[0], postpone,
-                                                    first_duration * 2)
-                    agent.send_to(RECORDER, timestamp(-light_position))
-                    agent.send_to(RECORDER, timestamp(-NOISE_IDX))
-                    ino.digital_write(light_position, LOW)
-                    speaker.stop()
-                    await present_stimulus(agent, ino, reward_pin[0],
-                                           reward_duration)
-                else:
-                    agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                    speaker.play(noise, False, True)
-                    await flush_message_for(agent, diff_first_second)
-                    agent.send_to(RECORDER, timestamp(light_position))
-                    ino.digital_write(light_position, HIGH)
-                    await fixed_interval_with_limit(agent, second_duration,
-                                                    response_pins[1], postpone,
-                                                    first_duration * 2)
-                    agent.send_to(RECORDER, timestamp(-light_position))
-                    agent.send_to(RECORDER, timestamp(-NOISE_IDX))
-                    ino.digital_write(light_position, LOW)
-                    speaker.stop()
-                    await present_stimulus(agent, ino, reward_pin[1],
-                                           reward_duration)
+                if uniform() <= p_free_trial:
+                    agent.send_to(RECORDER, timestamp(100))
+                    if is_light_first:
+                        agent.send_to(RECORDER, timestamp(light_position))
+                        ino.digital_write(light_position, HIGH)
+                        await agent.sleep(diff_first_second)
+                        agent.send_to(RECORDER, timestamp(NOISE_IDX))
+                        speaker.play(noise, False, True)
+                        await agent.sleep(second_duration)
+                        agent.send_to(RECORDER, timestamp(-light_position))
+                        agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                        ino.digital_write(light_position, LOW)
+                        speaker.stop()
+                        await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                        continue
+                    else:
+                        agent.send_to(RECORDER, timestamp(NOISE_IDX))
+                        speaker.play(noise, False, True)
+                        await agent.sleep(diff_first_second)
+                        agent.send_to(RECORDER, timestamp(light_position))
+                        ino.digital_write(light_position, HIGH)
+                        await agent.sleep(second_duration)
+                        agent.send_to(RECORDER, timestamp(-light_position))
+                        agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                        ino.digital_write(light_position, LOW)
+                        speaker.stop()
+                        await present_stimulus(agent, ino, reward_pin[1], reward_duration)
+                        continue
+                for _ in range(10):
+                    agent.send_to(RECORDER, timestamp(200))
+                    print(f"Trial {i}: Cue will be presented {isi} secs after.")
+                    await flush_message_for(agent, isi)
+                    if is_light_first:
+                        agent.send_to(RECORDER, timestamp(light_position))
+                        ino.digital_write(light_position, HIGH)
+                        await flush_message_for(agent, diff_first_second)
+                        agent.send_to(RECORDER, timestamp(NOISE_IDX))
+                        speaker.play(noise, False, True)
+                        await flush_message_for(agent, diff_second_decision)
+                        is_correct = await decision_period(agent, decision_duration, response_pins[0])
+                        agent.send_to(RECORDER, timestamp(-light_position))
+                        agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                        ino.digital_write(light_position, LOW)
+                        speaker.stop()
+                        if is_correct:
+                            await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                            break
+                        else:
+                            isi = 5.
+                            continue
+                    else:
+                        agent.send_to(RECORDER, timestamp(NOISE_IDX))
+                        speaker.play(noise, False, True)
+                        await flush_message_for(agent, diff_first_second)
+                        agent.send_to(RECORDER, timestamp(light_position))
+                        ino.digital_write(light_position, HIGH)
+                        await flush_message_for(agent, diff_second_decision)
+                        is_correct = await decision_period(agent, decision_duration, response_pins[1])
+                        agent.send_to(RECORDER, timestamp(-light_position))
+                        agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                        ino.digital_write(light_position, LOW)
+                        speaker.stop()
+                        if is_correct:
+                            await present_stimulus(agent, ino, reward_pin[1], reward_duration)
+                            break
+                        else:
+                            isi = 5.
+                            continue
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
             agent.finish()
