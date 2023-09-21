@@ -15,7 +15,7 @@ CONTROLLER = "Controller"
 
 
 async def decision_period(agent: Agent, duration: float, correct: Any) -> bool:
-    correct = 0
+    ncorrect = 0
     while duration >= 0. and agent.working():
         s = perf_counter()
         mail = await agent.try_recv(duration)
@@ -25,11 +25,11 @@ async def decision_period(agent: Agent, duration: float, correct: Any) -> bool:
             break
         _, response = mail
         if response == correct:
-            correct += 1
+            ncorrect += 1
             continue
         else:
             return False
-    return correct > 0
+    return ncorrect > 0
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
@@ -49,6 +49,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
     range_isi = expvars.get("interval-range", 10.)
+    nretry = expvars.get("number-of-retry", 5)
 
     number_of_trial = expvars.get("number-of-trial", 200)
     isis = unif_rng(mean_isi, range_isi, number_of_trial)
@@ -93,11 +94,26 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         speaker.stop()
                         await present_stimulus(agent, ino, reward_pin[1], reward_duration)
                         continue
-                for _ in range(10):
+                for retry in range(nretry):
                     agent.send_to(RECORDER, timestamp(200))
                     print(f"Trial {i}: Cue will be presented {isi} secs after.")
                     await flush_message_for(agent, isi)
+                        
                     if is_light_first:
+                        if retry >= (nretry - 1):
+                            agent.send_to(RECORDER, timestamp(light_position))
+                            ino.digital_write(light_position, HIGH)
+                            await flush_message_for(agent, diff_first_second)
+                            agent.send_to(RECORDER, timestamp(NOISE_IDX))
+                            speaker.play(noise, False, True)
+                            await flush_message_for(agent, second_duration)
+                            agent.send_to(RECORDER, timestamp(-light_position))
+                            agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                            ino.digital_write(light_position, LOW)
+                            speaker.stop()
+                            await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                            break
+
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
                         await flush_message_for(agent, diff_first_second)
@@ -116,6 +132,19 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                             isi = 5.
                             continue
                     else:
+                        if retry >= (nretry - 1):
+                            agent.send_to(RECORDER, timestamp(NOISE_IDX))
+                            speaker.play(noise, False, True)
+                            await flush_message_for(agent, diff_first_second)
+                            agent.send_to(RECORDER, timestamp(light_position))
+                            ino.digital_write(light_position, HIGH)
+                            await flush_message_for(agent, second_duration)
+                            agent.send_to(RECORDER, timestamp(-light_position))
+                            agent.send_to(RECORDER, timestamp(-NOISE_IDX))
+                            ino.digital_write(light_position, LOW)
+                            speaker.stop()
+                            await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                            break
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
                         await flush_message_for(agent, diff_first_second)
@@ -154,9 +183,9 @@ async def read(agent: Agent, ino: Arduino, expvars: Experimental):
             if input_ is None:
                 continue
             parsed_input = input_.rstrip().decode("utf-8")
-            agent.send_to(RECORDER, timestamp(parsed_input))
             if parsed_input in response_pins_str:
                 agent.send_to(CONTROLLER, parsed_input)
+            agent.send_to(RECORDER, timestamp(parsed_input))
 
     except NotWorkingError:
         ino.cancel_read()
