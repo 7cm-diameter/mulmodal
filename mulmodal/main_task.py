@@ -68,6 +68,8 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
             for i, (is_light_first, light_position, isi) in trial_iterator:
                 if uniform() <= p_free_trial:
                     agent.send_to(RECORDER, timestamp(100))
+                    print(f"Trial {i}: Cue will be presented {isi} secs after.")
+                    await flush_message_for(agent, isi)
                     if is_light_first:
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
@@ -129,7 +131,6 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                             await present_stimulus(agent, ino, reward_pin[0], reward_duration)
                             break
                         else:
-                            isi = 5.
                             continue
                     else:
                         if retry >= (nretry - 1):
@@ -160,7 +161,6 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                             await present_stimulus(agent, ino, reward_pin[1], reward_duration)
                             break
                         else:
-                            isi = 5.
                             continue
             agent.send_to(OBSERVER, NEND)
             agent.send_to(RECORDER, timestamp(NEND))
