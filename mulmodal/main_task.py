@@ -16,6 +16,7 @@ CONTROLLER = "Controller"
 
 async def decision_period(agent: Agent, duration: float, correct: Any) -> bool:
     ncorrect = 0
+    nerror = 0
     while duration >= 0. and agent.working():
         s = perf_counter()
         mail = await agent.try_recv(duration)
@@ -26,10 +27,9 @@ async def decision_period(agent: Agent, duration: float, correct: Any) -> bool:
         _, response = mail
         if response == correct:
             ncorrect += 1
-            continue
         else:
-            return False
-    return ncorrect > 0
+            nerror += 1
+    return ncorrect > nerror
 
 
 async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
@@ -62,6 +62,15 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     trial_iterator = TrialIterator(list(range(number_of_trial)),
                                    list(zip(stimulus_order, light_positions, isis)))
 
+    upper_second_duration = expvars.get("upper-second-duration", 1.)
+    second_duration_sound = second_duration
+    second_duration_light = second_duration
+    diff_first_second_sound = diff_first_second
+    diff_first_second_light = diff_first_second
+    diff_second_decision_sound = diff_second_decision
+    diff_second_decision_light = diff_second_decision
+    delta = (upper_second_duration - second_duration) / number_of_trial
+
     try:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
@@ -73,15 +82,18 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     if is_light_first:
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await agent.sleep(diff_first_second)
+                        await agent.sleep(diff_first_second_sound)
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await agent.sleep(second_duration)
+                        await agent.sleep(second_duration_sound)
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                         ino.digital_write(light_position, LOW)
                         speaker.stop()
                         await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                        second_duration_sound += delta
+                        diff_first_second_sound = first_duration - second_duration_sound
+                        diff_second_decision_sound = second_duration_sound - decision_duration
                         continue
                     else:
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
@@ -95,6 +107,9 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         ino.digital_write(light_position, LOW)
                         speaker.stop()
                         await present_stimulus(agent, ino, reward_pin[1], reward_duration)
+                        second_duration_light += delta
+                        diff_first_second_light = first_duration - second_duration_light
+                        diff_second_decision_light = second_duration_light - decision_duration
                         continue
                 for retry in range(nretry):
                     agent.send_to(RECORDER, timestamp(200))
@@ -105,30 +120,37 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         if retry >= (nretry - 1):
                             agent.send_to(RECORDER, timestamp(light_position))
                             ino.digital_write(light_position, HIGH)
-                            await flush_message_for(agent, diff_first_second)
+                            await flush_message_for(agent, diff_first_second_sound)
                             agent.send_to(RECORDER, timestamp(NOISE_IDX))
                             speaker.play(noise, False, True)
-                            await flush_message_for(agent, second_duration)
+                            await flush_message_for(agent, second_duration_sound)
                             agent.send_to(RECORDER, timestamp(-light_position))
                             agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                             ino.digital_write(light_position, LOW)
                             speaker.stop()
                             await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                            second_duration_sound += delta
+                            diff_first_second_sound = first_duration - second_duration_sound
+                            diff_second_decision_sound = second_duration_sound - decision_duration
                             break
 
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await flush_message_for(agent, diff_first_second)
+                        await flush_message_for(agent, diff_first_second_sound)
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await flush_message_for(agent, diff_second_decision)
+                        await flush_message_for(agent, diff_second_decision_sound)
                         is_correct = await decision_period(agent, decision_duration, response_pins[0])
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                         ino.digital_write(light_position, LOW)
                         speaker.stop()
                         if is_correct:
+                            agent.send_to(RECORDER, timestamp(201))
                             await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                            second_duration_sound += delta
+                            diff_first_second_sound = first_duration - second_duration_sound
+                            diff_second_decision_sound = second_duration_sound - decision_duration
                             break
                         else:
                             continue
@@ -136,29 +158,36 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         if retry >= (nretry - 1):
                             agent.send_to(RECORDER, timestamp(NOISE_IDX))
                             speaker.play(noise, False, True)
-                            await flush_message_for(agent, diff_first_second)
+                            await flush_message_for(agent, diff_first_second_light)
                             agent.send_to(RECORDER, timestamp(light_position))
                             ino.digital_write(light_position, HIGH)
-                            await flush_message_for(agent, second_duration)
+                            await flush_message_for(agent, second_duration_light)
                             agent.send_to(RECORDER, timestamp(-light_position))
                             agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                             ino.digital_write(light_position, LOW)
                             speaker.stop()
-                            await present_stimulus(agent, ino, reward_pin[0], reward_duration)
+                            await present_stimulus(agent, ino, reward_pin[1], reward_duration)
+                            second_duration_light += delta
+                            diff_first_second_light = first_duration - second_duration_light
+                            diff_second_decision_light = second_duration_light - decision_duration
                             break
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await flush_message_for(agent, diff_first_second)
+                        await flush_message_for(agent, diff_first_second_light)
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await flush_message_for(agent, diff_second_decision)
+                        await flush_message_for(agent, diff_second_decision_light)
                         is_correct = await decision_period(agent, decision_duration, response_pins[1])
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                         ino.digital_write(light_position, LOW)
                         speaker.stop()
                         if is_correct:
+                            agent.send_to(RECORDER, timestamp(201))
                             await present_stimulus(agent, ino, reward_pin[1], reward_duration)
+                            second_duration_light += delta
+                            diff_first_second_light = first_duration - second_duration_light
+                            diff_second_decision_light = second_duration_light - decision_duration
                             break
                         else:
                             continue
