@@ -69,7 +69,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     diff_first_second_light = diff_first_second
     diff_second_decision_sound = diff_second_decision
     diff_second_decision_light = diff_second_decision
-    delta = (upper_second_duration - second_duration) / number_of_trial
+    delta = (upper_second_duration - second_duration) / (number_of_trial / 2)
 
     try:
         while agent.working():
