@@ -36,6 +36,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     first_duration = expvars.get("first-duration", 1.)
     second_duration = expvars.get("second-duration", 1.)
     decision_duration = expvars.get("decision-duration", 0.5)
+    noise_range = expvars.get("noise-range", 0.0)
     diff_first_second = first_duration - second_duration
     diff_second_decision = second_duration - decision_duration
     reward_duration = expvars.get("reward-duration", 0.05)
@@ -75,6 +76,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
             for i, (is_light_first, light_position, isi) in trial_iterator:
+                noise = uniform(-noise_range, noise_range)
                 if uniform() <= p_free_trial:
                     agent.send_to(RECORDER, timestamp(100))
                     print(f"Trial {i}: Cue will be presented {isi} secs after.")
@@ -82,10 +84,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     if is_light_first:
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await agent.sleep(diff_first_second_sound)
+                        await agent.sleep(diff_first_second_sound - noise)
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await agent.sleep(second_duration_sound)
+                        await agent.sleep(second_duration_sound + noise)
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                         ino.digital_write(light_position, LOW)
@@ -98,10 +100,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     else:
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await agent.sleep(diff_first_second)
+                        await agent.sleep(diff_first_second_light - noise)
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await agent.sleep(second_duration)
+                        await agent.sleep(second_duration_light + noise)
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                         ino.digital_write(light_position, LOW)
@@ -120,10 +122,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         if retry >= (nretry - 1):
                             agent.send_to(RECORDER, timestamp(light_position))
                             ino.digital_write(light_position, HIGH)
-                            await flush_message_for(agent, diff_first_second_sound)
+                            await flush_message_for(agent, diff_first_second_sound - noise)
                             agent.send_to(RECORDER, timestamp(NOISE_IDX))
                             speaker.play(noise, False, True)
-                            await flush_message_for(agent, second_duration_sound)
+                            await flush_message_for(agent, second_duration_sound + noise)
                             agent.send_to(RECORDER, timestamp(-light_position))
                             agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                             ino.digital_write(light_position, LOW)
@@ -136,10 +138,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
 
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await flush_message_for(agent, diff_first_second_sound)
+                        await flush_message_for(agent, diff_first_second_sound - noise)
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await flush_message_for(agent, diff_second_decision_sound)
+                        await flush_message_for(agent, diff_second_decision_sound + noise)
                         is_correct = await decision_period(agent, decision_duration, response_pins[0])
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
@@ -158,10 +160,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         if retry >= (nretry - 1):
                             agent.send_to(RECORDER, timestamp(NOISE_IDX))
                             speaker.play(noise, False, True)
-                            await flush_message_for(agent, diff_first_second_light)
+                            await flush_message_for(agent, diff_first_second_light - noise)
                             agent.send_to(RECORDER, timestamp(light_position))
                             ino.digital_write(light_position, HIGH)
-                            await flush_message_for(agent, second_duration_light)
+                            await flush_message_for(agent, second_duration_light + noise)
                             agent.send_to(RECORDER, timestamp(-light_position))
                             agent.send_to(RECORDER, timestamp(-NOISE_IDX))
                             ino.digital_write(light_position, LOW)
@@ -173,10 +175,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                             break
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
                         speaker.play(noise, False, True)
-                        await flush_message_for(agent, diff_first_second_light)
+                        await flush_message_for(agent, diff_first_second_light - noise)
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
-                        await flush_message_for(agent, diff_second_decision_light)
+                        await flush_message_for(agent, diff_second_decision_light + noise)
                         is_correct = await decision_period(agent, decision_duration, response_pins[1])
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
