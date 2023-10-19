@@ -47,7 +47,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     reward_pin = expvars.get("reward-pin", [6, 7])
     response_pins = list(map(str, expvars.get("response-pin", [-9, -10])))
     speaker = Speaker(expvars.get("speaker", 6))
-    noise = make_white_noise(first_duration * 2.)  # Click音でも良い？
+    white_noise = make_white_noise(first_duration * 2.)  # Click音でも良い？
 
     mean_isi = expvars.get("inter-stimulus-interval", 19.)
     range_isi = expvars.get("interval-range", 10.)
@@ -87,7 +87,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         ino.digital_write(light_position, HIGH)
                         await agent.sleep(diff_first_second_sound - noise)
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                        speaker.play(noise, False, True)
+                        speaker.play(white_noise, False, True)
                         await agent.sleep(second_duration_sound + noise)
                         agent.send_to(RECORDER, timestamp(-light_position))
                         agent.send_to(RECORDER, timestamp(-NOISE_IDX))
@@ -100,7 +100,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         continue
                     else:
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                        speaker.play(noise, False, True)
+                        speaker.play(white_noise, False, True)
                         await agent.sleep(diff_first_second_light - noise)
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
@@ -125,7 +125,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                             ino.digital_write(light_position, HIGH)
                             await flush_message_for(agent, diff_first_second_sound - noise)
                             agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                            speaker.play(noise, False, True)
+                            speaker.play(white_noise, False, True)
                             await flush_message_for(agent, second_duration_sound + noise)
                             agent.send_to(RECORDER, timestamp(-light_position))
                             agent.send_to(RECORDER, timestamp(-NOISE_IDX))
@@ -141,7 +141,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                         ino.digital_write(light_position, HIGH)
                         await flush_message_for(agent, diff_first_second_sound - noise)
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                        speaker.play(noise, False, True)
+                        speaker.play(white_noise, False, True)
                         await flush_message_for(agent, diff_second_decision_sound + noise)
                         is_correct = await decision_period(agent, decision_duration, response_pins[0])
                         agent.send_to(RECORDER, timestamp(-light_position))
@@ -160,7 +160,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                     else:
                         if retry >= (nretry - 1):
                             agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                            speaker.play(noise, False, True)
+                            speaker.play(white_noise, False, True)
                             await flush_message_for(agent, diff_first_second_light - noise)
                             agent.send_to(RECORDER, timestamp(light_position))
                             ino.digital_write(light_position, HIGH)
@@ -175,7 +175,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
                             diff_second_decision_light = second_duration_light - decision_duration
                             break
                         agent.send_to(RECORDER, timestamp(NOISE_IDX))
-                        speaker.play(noise, False, True)
+                        speaker.play(white_noise, False, True)
                         await flush_message_for(agent, diff_first_second_light - noise)
                         agent.send_to(RECORDER, timestamp(light_position))
                         ino.digital_write(light_position, HIGH)
