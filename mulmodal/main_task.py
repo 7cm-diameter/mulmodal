@@ -8,7 +8,8 @@ from comprex.scheduler import TrialIterator, blockwise_shuffle, unif_rng
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
 from mulmodal.util import flush_message_for, present_stimulus, fixed_interval_with_limit
-from numpy.random import uniform
+from numpy.random import uniform, choice
+
 
 NOISE_IDX = 14
 CONTROLLER = "Controller"
@@ -36,7 +37,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
     first_duration = expvars.get("first-duration", 1.)
     second_duration = expvars.get("second-duration", 1.)
     decision_duration = expvars.get("decision-duration", 0.5)
-    noise_range = expvars.get("noise-range", 0.0)
+    violation = expvars.get("violation", [0.])
     diff_first_second = first_duration - second_duration
     diff_second_decision = second_duration - decision_duration
     reward_duration = expvars.get("reward-duration", 0.05)
@@ -76,7 +77,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental) -> None:
         while agent.working():
             agent.send_to(RECORDER, timestamp(START))
             for i, (is_light_first, light_position, isi) in trial_iterator:
-                noise = uniform(-noise_range, noise_range)
+                noise = choice(violation, 1)[0]
                 if uniform() <= p_free_trial:
                     agent.send_to(RECORDER, timestamp(100))
                     print(f"Trial {i}: Cue will be presented {isi} secs after.")
