@@ -1,7 +1,7 @@
 from amas.agent import Agent, NotWorkingError
 from comprex.agent import ABEND, NEND, OBSERVER, RECORDER, START
 from comprex.config import Experimental
-from comprex.scheduler import TrialIterator2, unif_rng, repeat
+from comprex.scheduler import TrialIterator2, unif_rng, repeat, blockwise_shuffle
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
 from mulmodal.share import show_progress
@@ -19,7 +19,10 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
     range_isi: float = expvars.get("isi-range", 5.)
     number_of_rewards: int = expvars.get("number-of-rewards", 200)
     isis = unif_rng(mean_isi, range_isi, number_of_rewards)
-    light_positions: list[int] = sum(repeat([light_pins], [number_of_rewards // len(light_pins)]), [])
+    light_positions: list[int] = blockwise_shuffle(sum(repeat([light_pins],
+                                                              [number_of_rewards // len(light_pins)]),
+                                                       []),
+                                                   len(light_pins))
 
     trials = TrialIterator2(isis, light_positions)
 
