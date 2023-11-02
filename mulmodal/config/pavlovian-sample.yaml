@@ -15,7 +15,6 @@ Experimental:
 
 Metadata:
   subject:                    "enter-subject-name"
-  condition:                  "pavlovian-conditioning"
 
 PinMode:
   10:                         "SSINPUT"
