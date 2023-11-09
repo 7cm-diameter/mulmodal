@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     controller = Agent(CONTROLLER) \
         .assign_task(control, ino=ino, expvars=config.experimental) \
-        .assign_task(_self_terminate)
+        .assign_task(_self_terminate, ino=ino)
 
     # Use built-in agents
     reader = Agent(READER) \
