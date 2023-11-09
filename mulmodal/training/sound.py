@@ -62,7 +62,7 @@ if __name__ == '__main__':
     from pino.ino import Arduino, Comport
 
     config = PinoClap().config
-    config.metadata.update(condition = "pavlovian-with-single-led")
+    config.metadata.update(condition = "pavlovian-with-sound")
 
     com = Comport() \
         .apply_settings(config.comport) \
