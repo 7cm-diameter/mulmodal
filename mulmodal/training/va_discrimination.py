@@ -94,7 +94,7 @@ if __name__ == '__main__':
     from pino.ino import Arduino, Comport
 
     config = PinoClap().config
-    config.metadata.update(condition = "pavlovian-with-va-discrimination")
+    config.metadata.update(condition = "va-discrimination")
 
     com = Comport() \
         .apply_settings(config.comport) \
