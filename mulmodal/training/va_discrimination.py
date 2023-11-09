@@ -39,6 +39,7 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
     try:
         while agent.working():
             for i, isi, stimulus in trials:
+                show_progress(i, isi)
                 await flush_message_for(agent, isi)
                 agent.send_to(RECORDER, timestamp(stimulus))
                 if stimulus == NOISE_IDX:
