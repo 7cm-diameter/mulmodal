@@ -5,7 +5,7 @@ from comprex.config import Experimental
 from comprex.scheduler import TrialIterator2, unif_rng, repeat, blockwise_shuffle
 from comprex.util import timestamp
 from pino.ino import HIGH, LOW, Arduino
-from mulmodal.share import show_progress, flush_message_for, fixed_interval_with_limit2
+from mulmodal.share import show_progress, flush_message_for, fixed_interval_with_limit
 
 
 NOISE_IDX = 14
@@ -44,13 +44,13 @@ async def control(agent: Agent, ino: Arduino, expvars: Experimental):
                 agent.send_to(RECORDER, timestamp(stimulus))
                 if stimulus == NOISE_IDX:
                     speaker.play(white_noise, blocking=False, loop=True)
-                    await fixed_interval_with_limit2(agent, cue_duration, response_pins[1], postpone, waittime_limit)
+                    await fixed_interval_with_limit(agent, cue_duration, response_pins[1], postpone, waittime_limit)
                     agent.send_to(RECORDER, timestamp(-stimulus))
                     speaker.stop()
                     reward = reward_pins[1]
                 else:
                     ino.digital_write(stimulus, HIGH)
-                    await fixed_interval_with_limit2(agent, cue_duration, response_pins[0], postpone, waittime_limit)
+                    await fixed_interval_with_limit(agent, cue_duration, response_pins[0], postpone, waittime_limit)
                     agent.send_to(RECORDER, timestamp(-stimulus))
                     ino.digital_write(stimulus, LOW)
                     reward = reward_pins[0]
